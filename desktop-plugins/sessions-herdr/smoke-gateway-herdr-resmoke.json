@@ -1,0 +1,77 @@
+{
+  "when_art": "2026-09-23 ~19:57 ART",
+  "gateway": {
+    "root": "404",
+    "health": {
+      "status": 200,
+      "body": {
+        "status": "ok",
+        "platform": "hermes-agent",
+        "version": "0.21.4"
+      }
+    },
+    "models": {
+      "status": 200,
+      "n": 1
+    },
+    "jev_ping": null
+  },
+  "herdr": {
+    "status_server_raw": "status: running\nversion: 0.9.0\nendpoint_compatible: yes\nprivate_protocol: 22\nprivate_protocol_compatible: yes\nsocket: C:\\Users\\nachi\\AppData\\Roaming\\herdr\\herdr.sock",
+    "sessions": [
+      {
+        "default": true,
+        "name": "default",
+        "running": true,
+        "session_dir": "C:\\Users\\nachi\\AppData\\Roaming\\herdr",
+        "socket_path": "C:\\Users\\nachi\\AppData\\Roaming\\herdr\\herdr.sock"
+      }
+    ],
+    "herdrId": "default",
+    "running": true,
+    "partial": false,
+    "socket_path": "C:\\Users\\nachi\\AppData\\Roaming\\herdr\\herdr.sock"
+  },
+  "session": {
+    "id": "sess-t_68dad70a",
+    "title": "herdr-resmoke-gateway-herdr",
+    "kanbanId": "t_68dad70a",
+    "runId": "t_68dad70a",
+    "herdrId": "default",
+    "herdrPartial": false,
+    "herdrRunning": true,
+    "status": "ready",
+    "badge": "linked"
+  },
+  "task_create_rc": 0,
+  "ports": [
+    {
+      "port": 8642,
+      "listening": true,
+      "http_root": "404",
+      "health": {
+        "status": 200,
+        "body": "{\"status\": \"ok\", \"platform\": \"hermes-agent\", \"version\": \"0.21.4\"}"
+      }
+    },
+    {
+      "port": 9119,
+      "listening": true,
+      "http_root": 200,
+      "health": null
+    },
+    {
+      "port": 8766,
+      "listening": true,
+      "http_root": 200,
+      "health": null
+    },
+    {
+      "port": 9120,
+      "listening": false,
+      "http_root": "URLError",
+      "health": null
+    }
+  ],
+  "verdict": "PASS"
+}
