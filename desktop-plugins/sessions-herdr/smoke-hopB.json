@@ -1,0 +1,49 @@
+{
+  "ok": true,
+  "packet": {
+    "title": "Hop B smoke session",
+    "assignee": "builder",
+    "goal": "prove create-time link + gateway status",
+    "acceptance": [
+      "linked ids present",
+      "status from gateway"
+    ],
+    "doNot": [
+      "second kanban board"
+    ],
+    "evidenceUrl": "http://127.0.0.1:8642/health"
+  },
+  "session": {
+    "id": "sess-1a0d07008e7-4e2f",
+    "title": "Hop B smoke session",
+    "status": "ready",
+    "statusSource": "gateway",
+    "profile": "builder",
+    "kanbanId": "k-1a0d07008e7-ce6fd",
+    "runId": "run-1a0d07008e7-24978",
+    "herdrId": "herdr-stub-1a0d07008e7-45bdf",
+    "evidenceUrl": "http://127.0.0.1:8642/health",
+    "goal": "prove create-time link + gateway status",
+    "acceptance": [
+      "linked ids present",
+      "status from gateway"
+    ],
+    "doNot": [
+      "second kanban board"
+    ],
+    "badge": "linked",
+    "createdAt": "2026-09-23T22:43:18.375738+00:00",
+    "gateway": {
+      "ok": true,
+      "status_code": 200,
+      "body": "{\"status\": \"ok\", \"platform\": \"hermes-agent\", \"version\": \"0.21.4\"}"
+    }
+  },
+  "gateway": {
+    "ok": true,
+    "status_code": 200,
+    "body": "{\"status\": \"ok\", \"platform\": \"hermes-agent\", \"version\": \"0.21.4\"}"
+  },
+  "plugin_install": "%LOCALAPPDATA%\\hermes\\desktop-plugins\\sessions-herdr\\plugin.js",
+  "note": "Open Hermes Desktop \u2192 Sessions (Reload desktop plugins if needed)."
+}
