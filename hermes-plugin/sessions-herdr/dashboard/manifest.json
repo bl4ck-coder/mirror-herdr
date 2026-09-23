@@ -1,8 +1,7 @@
-{
+﻿{
   "name": "sessions-herdr",
-  "label": "Sessions",
-  "description": "Herdr-inside-Desktop Sessions — real kanban create, ports, thin Jev gate.",
+  "label": "Sessions (Herdr)",
+  "description": "Sessions shell — create-time kanban/herdr link, ports strip, thin Jev gate.",
   "version": "0.2.0",
-  "api": "plugin_api.py",
-  "tab": { "hidden": true }
+  "api": "plugin_api.py"
 }

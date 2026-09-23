@@ -1,0 +1,30 @@
+{
+  "when": "2026-09-23 ~20:04 ART",
+  "path": "plugin_api.create_session (same as UI ctx.rest /create)",
+  "session": {
+    "id": "sess-t_a7d86749",
+    "title": "herdr-hopD-ui-path",
+    "kanbanId": "t_a7d86749",
+    "runId": "t_a7d86749",
+    "herdrId": "default",
+    "herdrPartial": false,
+    "status": "ready",
+    "badge": "linked"
+  },
+  "herdr": {
+    "ok": true,
+    "partial": false,
+    "herdrId": "default",
+    "running": true,
+    "socket_path": "C:\\Users\\nachi\\AppData\\Roaming\\herdr\\herdr.sock",
+    "note": null
+  },
+  "ports_ok": true,
+  "plugin_files": {
+    "desktop_plugin_js": true,
+    "python_plugin_api": true,
+    "manifest_api": true,
+    "config_enabled": true
+  },
+  "verdict": "PASS"
+}
