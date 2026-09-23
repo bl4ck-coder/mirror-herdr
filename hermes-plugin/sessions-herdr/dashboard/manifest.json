@@ -1,7 +1,7 @@
-﻿{
-  "name": "sessions-herdr",
-  "label": "Sessions (Herdr)",
-  "description": "Sessions shell — create-time kanban/herdr link, ports strip, thin Jev gate.",
-  "version": "0.2.0",
-  "api": "plugin_api.py"
+{
+    "label":  "Sessions (Herdr)",
+    "api":  "plugin_api.py",
+    "description":  "Sessions shell - create-time kanban/herdr link, ports strip, thin Jev gate.",
+    "name":  "sessions-herdr",
+    "version":  "0.2.0"
 }

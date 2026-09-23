@@ -1,0 +1,20 @@
+{
+  "session": {
+    "id": "sess-t_4fde48a6",
+    "kanbanId": "t_4fde48a6",
+    "runId": "t_4fde48a6",
+    "herdrId": "default",
+    "herdrPartial": false,
+    "status": "ready",
+    "badge": "linked"
+  },
+  "herdr": {
+    "ok": true,
+    "partial": false,
+    "herdrId": "default",
+    "running": true,
+    "socket_path": "C:\\Users\\nachi\\AppData\\Roaming\\herdr\\herdr.sock",
+    "note": null
+  },
+  "verdict": "PASS"
+}
