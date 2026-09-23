@@ -1,0 +1,46 @@
+{
+  "ports": [
+    {
+      "port": 8642,
+      "listening": true,
+      "http": "404"
+    },
+    {
+      "port": 9119,
+      "listening": true,
+      "http": 200
+    },
+    {
+      "port": 8766,
+      "listening": true,
+      "http": 200
+    },
+    {
+      "port": 9120,
+      "listening": false,
+      "http": "URLError"
+    }
+  ],
+  "herdr": {
+    "ok": true,
+    "herdrId": "default",
+    "running": false,
+    "partial": true,
+    "note": "Herdr server not running \u2014 session name as herdrId"
+  },
+  "session": {
+    "id": "sess-t_9f0f49dd",
+    "title": "herdr-hopC-smoke-2",
+    "kanbanId": "t_9f0f49dd",
+    "runId": "t_9f0f49dd",
+    "herdrId": "default",
+    "herdrPartial": true,
+    "status": "ready",
+    "badge": "linked"
+  },
+  "jev": {
+    "ok": true,
+    "verdict": "yes"
+  },
+  "jev_raw": "verdict: yes\none_line: Session packet assembled and queued for immediate dispatch."
+}
