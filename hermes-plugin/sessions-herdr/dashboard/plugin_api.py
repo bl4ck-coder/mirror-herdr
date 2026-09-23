@@ -27,6 +27,8 @@ class CreateBody(BaseModel):
     doNot: list[str] = Field(default_factory=list)
     evidenceUrl: str = ""
     markdown: str = ""
+    # Smoke only: park the card blocked so a verify create does not dispatch a worker.
+    hold: bool = False
 
 
 class JevGateBody(BaseModel):
@@ -149,8 +151,14 @@ def create_session(body: CreateBody) -> dict[str, Any]:
         "--created-by",
         "sessions-herdr",
     ]
+    if body.hold:
+        cmd.extend(["--initial-status", "blocked"])
+    # Desktop create is a user action, not a delegated-child mutation. A dashboard
+    # started from a fenced Hermes shell would otherwise refuse hermes kanban create.
+    env = os.environ.copy()
+    env.pop("HERMES_DELEGATED_CHILD_CONTEXT", None)
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=env)
     except Exception as e:
         raise HTTPException(500, f"hermes kanban create failed to spawn: {e}") from e
     if proc.returncode != 0:

@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "kanbanId": "t_dbeb5910",
+  "runId": "t_dbeb5910",
+  "herdrId": "default",
+  "herdrPartial": false,
+  "status": "blocked",
+  "db_row": {
+    "id": "t_dbeb5910",
+    "title": "herdr-hopC-smoke-verify",
+    "status": "blocked",
+    "created_by": "sessions-herdr",
+    "assignee": "sessions-smoke"
+  },
+  "stub": false
+}
