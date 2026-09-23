@@ -1,0 +1,25 @@
+{
+  "when": "2026-09-23 ~20:15 ART",
+  "path": "POST /api/plugins/sessions-herdr/create",
+  "http": 200,
+  "base": "http://127.0.0.1:9119",
+  "session": {
+    "id": "sess-t_b8a1d0e2",
+    "title": "herdr-hopD-rest-verify",
+    "kanbanId": "t_b8a1d0e2",
+    "runId": "t_b8a1d0e2",
+    "herdrId": "default",
+    "herdrPartial": false,
+    "status": "blocked",
+    "badge": "linked",
+    "created_by": "sessions-herdr",
+    "assignee": "sessions-smoke"
+  },
+  "herdr_live": {
+    "ok": true,
+    "partial": false,
+    "herdrId": "default",
+    "running": true
+  },
+  "verdict": "PASS"
+}
