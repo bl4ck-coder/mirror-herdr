@@ -1,5 +1,5 @@
 /**
- * sessions-herdr — Hop H A4 extras (Herdr-inside-Desktop).
+ * sessions-herdr — Hop I liquid-glass AIZURG (Herdr-inside-Desktop).
  * Disk: $HERMES_HOME/desktop-plugins/sessions-herdr/plugin.js
  * Backend: $HERMES_HOME/plugins/sessions-herdr/dashboard/plugin_api.py
  * Canonical: mirror-herdr/desktop-plugins/sessions-herdr/
@@ -421,6 +421,127 @@ function ActionPack(props) {
   })
 }
 
+const GLASS_CSS = [
+  '.sessions-aizurg-glass {',
+  '  --gold-hi: #e8c35a;',
+  '  --gold-deep: #d4a017;',
+  '  --gold-hairline: rgba(232,195,90,.16);',
+  '  --ink: #F4F4F2;',
+  '  --muted: #8A8A8F;',
+  '  --bg: #0A0A0B;',
+  '  --glass-blur: 22px;',
+  '  --glass-piso: rgba(11, 9, 20, .42);',
+  '  --glass-edge: rgba(244,244,242,.18);',
+  '  --glass: linear-gradient(155deg, rgba(244,244,242,.07) 0%, rgba(244,244,242,.02) 46%, rgba(232,195,90,.05) 100%), linear-gradient(var(--glass-piso), var(--glass-piso));',
+  '  color: var(--ink);',
+  '  background: var(--bg);',
+  '}',
+  '.sessions-aizurg-glass .sessions-form,',
+  '.sessions-aizurg-glass .sessions-port,',
+  '.sessions-aizurg-glass .sessions-row,',
+  '.sessions-aizurg-glass .sessions-toasts {',
+  '  border-color: var(--gold-hairline);',
+  '  background: var(--glass);',
+  '  backdrop-filter: blur(22px);',
+  '  -webkit-backdrop-filter: blur(22px);',
+  '  box-shadow: inset 0 1px 0 var(--glass-edge);',
+  '}',
+  '.sessions-aizurg-glass .sessions-create {',
+  '  border: 1px solid var(--gold-deep);',
+  '  color: var(--gold-hi);',
+  '  background: var(--glass);',
+  '  backdrop-filter: blur(22px);',
+  '  -webkit-backdrop-filter: blur(22px);',
+  '}',
+  '.sessions-aizurg-glass .sessions-row-focused {',
+  '  border-color: var(--gold-hi);',
+  '}',
+  '.sessions-aizurg-glass .sessions-empty {',
+  '  display: flex;',
+  '  flex-direction: column;',
+  '  align-items: center;',
+  '  text-align: center;',
+  '  gap: 8px;',
+  '  margin-top: 4px;',
+  '  padding: 28px 16px 20px;',
+  '  color: var(--muted);',
+  '}',
+  '.sessions-aizurg-glass .sessions-cta {',
+  '  color: var(--gold-hi);',
+  '  font-size: 0.95rem;',
+  '}',
+  '.sessions-aizurg-glass .sessions-empty-hint {',
+  '  color: var(--muted);',
+  '  font-size: 0.75rem;',
+  '}',
+  '.sessions-aizurg-glass .sessions-glass-illu {',
+  '  display: block;',
+  '  width: 120px;',
+  '  height: 88px;',
+  '}'
+].join('\n')
+
+function EmptyState() {
+  return jsxs('div', {
+    className: 'sessions-empty',
+    children: [
+      jsxs('svg', {
+        className: 'sessions-glass-illu',
+        viewBox: '0 0 120 88',
+        width: '120',
+        height: '88',
+        'aria-hidden': 'true',
+        children: [
+          jsx('defs', {
+            children: jsxs('linearGradient', {
+              id: 'sessions-glass-illu-fill',
+              x1: '0',
+              y1: '0',
+              x2: '1',
+              y2: '1',
+              children: [
+                jsx('stop', { offset: '0%', stopColor: '#ffffff', stopOpacity: '0.28' }),
+                jsx('stop', { offset: '46%', stopColor: '#ffffff', stopOpacity: '0.05' }),
+                jsx('stop', { offset: '100%', stopColor: '#e8c35a', stopOpacity: '0.22' })
+              ]
+            })
+          }),
+          jsx('rect', {
+            x: '16',
+            y: '12',
+            width: '88',
+            height: '64',
+            rx: '14',
+            fill: 'url(#sessions-glass-illu-fill)',
+            stroke: '#e8c35a',
+            strokeOpacity: '0.42',
+            strokeWidth: '1.2'
+          }),
+          jsx('circle', {
+            cx: '60',
+            cy: '44',
+            r: '18',
+            fill: 'rgba(232,195,90,.10)',
+            stroke: '#e8c35a',
+            strokeOpacity: '0.55',
+            strokeWidth: '1'
+          }),
+          jsx('ellipse', {
+            cx: '52',
+            cy: '36',
+            rx: '7',
+            ry: '4',
+            fill: '#ffffff',
+            fillOpacity: '0.32'
+          })
+        ]
+      }),
+      jsx('div', { className: 'sessions-cta', children: 'Abrí un agente en Sessions' }),
+      jsx('div', { className: 'sessions-empty-hint', children: 'El formulario de create está arriba.' })
+    ]
+  })
+}
+
 function SessionsPage(props) {
   const storage = props.storage
   const os = props.os
@@ -570,8 +691,9 @@ function SessionsPage(props) {
   }
 
   return jsxs('div', {
-    className: 'flex h-full min-h-0 flex-col gap-3 p-3 text-sm text-(--ui-text-secondary)',
+    className: 'sessions-aizurg-glass flex h-full min-h-0 flex-col gap-3 p-3 text-sm text-(--ui-text-secondary)',
     children: [
+      jsx('style', { id: 'sessions-aizurg-glass-style', children: GLASS_CSS }),
       jsxs('div', {
         className: 'flex items-baseline justify-between gap-2',
         children: [
@@ -580,7 +702,7 @@ function SessionsPage(props) {
               jsx('div', { className: 'text-base text-foreground', children: 'Sessions' }),
               jsx('div', {
                 className: 'text-(--ui-text-tertiary)',
-                children: 'Herdr-inside-Desktop · Hop H A4 extras · not a second board'
+                children: 'Herdr-inside-Desktop · Hop I · liquid-glass AIZURG · not a second board'
               })
             ]
           }),
@@ -597,7 +719,7 @@ function SessionsPage(props) {
           const st = row.up === true ? 'up' : (row.up === false ? 'down' : (row.listening === true ? 'up' : (row.listening === false ? 'down' : '?')))
           const pathBit = row.path && row.path !== '/' ? (' ' + row.path) : ''
           return jsx('span', {
-            className: 'rounded border border-(--ui-stroke-secondary) px-1.5 py-0.5',
+            className: 'sessions-port rounded border px-1.5 py-0.5',
             children: ':' + row.port + ' ' + st + pathBit + (lab ? ' ' + lab : '')
           }, row.port)
         })
@@ -606,7 +728,7 @@ function SessionsPage(props) {
         ? jsx('div', { className: 'text-[0.65rem] text-(--ui-text-quaternary)', children: ports.reconcile })
         : null,
       jsxs('div', {
-        className: 'rounded-lg border border-(--ui-stroke-secondary) p-3',
+        className: 'sessions-form rounded-lg border p-3',
         children: [
           jsxs('div', {
             className: 'mb-2 flex gap-2',
@@ -647,7 +769,7 @@ function SessionsPage(props) {
             children: [
               jsx('button', {
                 type: 'button',
-                className: 'rounded bg-(--chrome-action-hover) px-3 py-1 text-xs text-foreground',
+                className: 'sessions-create rounded px-3 py-1 text-xs',
                 onClick: onCreate,
                 children: 'Create + link'
               }),
@@ -686,7 +808,7 @@ function SessionsPage(props) {
           claimNote ? jsx('div', { className: 'mt-1 text-[0.7rem] text-(--ui-text-tertiary)', children: claimNote }) : null,
           jsx('div', {
             className: 'mt-1 text-[0.65rem] text-(--ui-text-quaternary)',
-            children: 'Reiniciar Hermes Desktop para que el plugin live tome Hop H. Create no espera a :9120.'
+            children: 'Reiniciar Hermes Desktop para que el plugin live tome Hop I. Create no espera a :9120.'
           }),
           handoffText ? jsx('pre', {
             className: 'mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-[0.65rem] text-(--ui-text-tertiary)',
@@ -695,18 +817,13 @@ function SessionsPage(props) {
           diffText ? jsx('pre', {
             className: 'mt-2 max-h-32 overflow-auto whitespace-pre-wrap text-[0.65rem] text-(--ui-text-quaternary)',
             children: diffText
-          }) : null,
-          sessions.length === 0
-            ? jsx('div', {
-                className: 'mt-3 text-center text-(--ui-text-tertiary)',
-                children: 'Empty · Create a Session above — the action pack appears on the row'
-              })
-            : null
+          }) : null
         ]
       }),
+      sessions.length === 0 ? jsx(EmptyState, {}) : null,
       toasts.length
         ? jsx('div', {
-            className: 'space-y-1 rounded border border-(--ui-stroke-secondary) p-2 text-[0.7rem]',
+            className: 'sessions-toasts space-y-1 rounded border p-2 text-[0.7rem]',
             children: toasts.map(function (ev) {
               return jsxs('div', {
                 className: 'flex flex-wrap items-center gap-2',
@@ -727,7 +844,7 @@ function SessionsPage(props) {
         className: 'min-h-0 flex-1 space-y-2 overflow-auto',
         children: sessions.map(function (s) {
           return jsxs('div', {
-            className: 'rounded border p-2 ' + (focusedId === s.id ? 'border-foreground' : 'border-(--ui-stroke-secondary)'),
+            className: 'sessions-row rounded border p-2' + (focusedId === s.id ? ' sessions-row-focused' : ''),
             children: [
               jsxs('div', {
                 className: 'flex justify-between gap-2',
@@ -775,7 +892,7 @@ function SessionsPage(props) {
 export default {
   id: ID,
   name: 'Sessions (Herdr)',
-  description: 'Sessions shell Hop H — A4 extras (ports 8766, claim, kanban_done toast, copy handoff). Not a second board.',
+  description: 'Sessions shell Hop I — liquid-glass AIZURG (ports 8766, claim, kanban_done toast, copy handoff). Not a second board.',
   defaultEnabled: true,
   register(ctx) {
     bindRest(ctx.rest)
