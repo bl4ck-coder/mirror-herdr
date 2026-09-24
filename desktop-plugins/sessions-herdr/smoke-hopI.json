@@ -26,7 +26,7 @@
     "api_import": true,
     "api_health_hop_h": true
   },
-  "sha256": "1f354d76a61c3d14ef3e11b0d8192cdf3bf8543c6b4f62759c946c3ccaecf814",
+  "sha256": "1fcea09484c5b984589cc4f54906645f3604aea4b370230faae81bc48f23bd3d",
   "dom": {
     "root": "div.sessions-aizurg-glass",
     "style": "style#sessions-aizurg-glass-style",
