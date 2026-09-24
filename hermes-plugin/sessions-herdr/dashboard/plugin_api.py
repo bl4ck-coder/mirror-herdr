@@ -34,7 +34,10 @@ PORTS = (8642, 8766)
 EVIDENCE_PORT = 8766
 # Gateway source of truth is GET /health. Bare / may 404 while the gateway is up.
 PROBE_PATH = {8642: "/health", 8766: "/"}
-DASHBOARD_ORIGIN = "http://127.0.0.1:9119"
+# Sin deep link: el dashboard :9119 que servía /api/plugins/kanban/tasks/<id> se retiró
+# 2026-09-24 y el backend de Desktop corre en un puerto aleatorio. Link vacío + motivo;
+# la UI ya oculta el botón cuando viene vacío (cierre-os-0924 C2a).
+DEEP_LINK_NOTE = "sin deep link: dashboard :9119 retirado 2026-09-24 — abrí la tarjeta en Desktop → Kanban"
 VAULT = Path(r"C:\Users\nachi\ObsidianVaults\mirror-brain")
 FORK = VAULT / "01-Projects" / "Hermes" / "mirror-herdr"
 RECEIPTS = VAULT / "Meta" / "bus" / "receipts"
@@ -923,7 +926,7 @@ def act_route(body: ActBody) -> dict[str, Any]:
 
 
 def _deep_link(kanban_id: str) -> str:
-    return f"{DASHBOARD_ORIGIN}/api/plugins/kanban/tasks/{kanban_id}"
+    return ""
 
 
 def _public_task(task: dict[str, Any]) -> dict[str, Any]:
@@ -955,6 +958,7 @@ def _session_from_task(task: dict[str, Any]) -> dict[str, Any]:
         "receiptPath": "",
         "goal": "",
         "deepLink": _deep_link(kid) if kid else "",
+        "deepLinkNote": DEEP_LINK_NOTE,
     }
 
 
@@ -1055,7 +1059,7 @@ def _duplex_hooks() -> dict[str, str]:
 def _duplex(since: Optional[int]) -> dict[str, Any]:
     """Read completed events. Does not POST the webhook — the shell hook owns notify."""
     hooks = _duplex_hooks()
-    template = f"{DASHBOARD_ORIGIN}/api/plugins/kanban/tasks/{{task_id}}"
+    template = ""  # ver DEEP_LINK_NOTE
     db = _kanban_db_path()
     if not db.exists():
         return {"ok": False, "reason": "kanban.db missing", "hooks": hooks, "events": [], "deep_link_template": template}
