@@ -19,6 +19,5 @@ Sessions v1 umbrella checklist. Not a second board. UI ownership stays **A11 for
 ## Do-not
 - Second kanban board.
 - Ops-console rebuild.
-- Install to `%LOCALAPPDATA%\hermes\skills` (Hop F).
 - Invent `herdrId`.
 - SOUL, Nous, Phase C, luxury UI.
