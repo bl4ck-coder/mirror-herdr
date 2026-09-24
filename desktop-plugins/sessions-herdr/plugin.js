@@ -51,14 +51,6 @@ async function restDiff() {
     return { ok: false, error: String(e && e.message ? e.message : e) }
   }
 }
-async function restJevGate(packet) {
-  if (!rest) return { ok: false, verdict: 'skip', error: 'backend off' }
-  try {
-    return await rest('/jev-gate', { method: 'POST', body: { title: packet.title || '', goal: packet.goal || '' } })
-  } catch (e) {
-    return { ok: false, verdict: 'skip', error: String(e && e.message ? e.message : e) }
-  }
-}
 async function restCapabilities(session) {
   if (!rest) return { ok: false, error: 'backend off' }
   return rest('/capabilities', { method: 'POST', body: sessionRef(session) })
@@ -704,19 +696,15 @@ function SessionsPage(props) {
       persist([sess].concat(sessions))
       setForm(emptyForm())
       setFocusedId(sess.id)
+      // Herdr: el tab propio lo abre herdr_watch cuando la tarjeta corre (sale en la lista de arriba).
+      // Jev juzga la entrega en el portón de review, no el pedido.
       setNote(
         'REAL kanban=' + sess.kanbanId +
         ' run=' + (sess.runId || '(none)') +
-        ' herdr=' + sess.herdrId +
-        (sess.herdrPartial ? ' (herdr PARTIAL)' : '')
+        ' · ' + (sess.herdrNote || 'tab Herdr al correr')
       )
       haptic('tap')
       host.notify({ kind: 'info', message: 'Session linked: ' + sess.title })
-      restJevGate(packet).then(function (g) {
-        if (g && g.verdict) {
-          setNote(function (n) { return n + ' | jev:' + g.verdict })
-        }
-      })
     } catch (e) {
       const sess = createLinkedSession(packet, gw)
       persist([sess].concat(sessions))
@@ -730,14 +718,12 @@ function SessionsPage(props) {
   const taCls = 'mb-1 w-full rounded border border-(--ui-stroke-secondary) bg-transparent p-2 text-xs'
   const portRows = (ports && ports.ports)
     ? ports.ports
-    : [8642, 9119, 8766, 9120].map(function (p) {
+    : [8642, 8766].map(function (p) {
         return { port: p, listening: null, path: p === 8642 ? '/health' : '/' }
       })
   const fallbackLabels = {
     8642: 'Hermes gateway',
-    9119: 'Hermes dashboard',
-    8766: 'Evidence hub',
-    9120: 'Ops-console (out of Sessions v1 scope)'
+    8766: 'Evidence hub'
   }
 
   return jsxs('div', {
@@ -859,7 +845,7 @@ function SessionsPage(props) {
           claimNote ? jsx('div', { className: 'mt-1 text-[0.7rem] text-(--ui-text-tertiary)', children: claimNote }) : null,
           jsx('div', {
             className: 'mt-1 text-[0.65rem] text-(--ui-text-quaternary)',
-            children: 'Reiniciar Hermes Desktop para que el plugin live tome Hop I. Create no espera a :9120.'
+            children: 'Reiniciar Hermes Desktop para que el plugin live tome Hop I. :8766 solo se levanta para el GUI-PASS.'
           }),
           handoffText ? jsx('pre', {
             className: 'mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-[0.65rem] text-(--ui-text-tertiary)',

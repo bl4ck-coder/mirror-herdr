@@ -29,10 +29,11 @@ from pydantic import BaseModel, Field
 
 router = APIRouter()
 
-PORTS = (8642, 9119, 8766, 9120)
+# 9119 (dashboard) no convive con el backend de Hermes Desktop; 9120 (consola) retirada 09-21.
+PORTS = (8642, 8766)
 EVIDENCE_PORT = 8766
 # Gateway source of truth is GET /health. Bare / may 404 while the gateway is up.
-PROBE_PATH = {8642: "/health", 9119: "/", 8766: "/", 9120: "/"}
+PROBE_PATH = {8642: "/health", 8766: "/"}
 DASHBOARD_ORIGIN = "http://127.0.0.1:9119"
 VAULT = Path(r"C:\Users\nachi\ObsidianVaults\mirror-brain")
 FORK = VAULT / "01-Projects" / "Hermes" / "mirror-herdr"
@@ -778,16 +779,14 @@ def act(body: ActBody) -> dict[str, Any]:
 
 @router.get("/ports")
 def ports() -> dict[str, Any]:
-    """Strip only. Never blocks create. 9120 down is informational."""
+    """Strip only. Never blocks create. 8766 down is normal outside a GUI-PASS."""
     rows = [_probe_port(p) for p in PORTS]
     return {
         "ok": True,
         "ports": rows,
         "labels": {
             "8642": "Hermes gateway",
-            "9119": "Hermes dashboard",
             "8766": "Evidence hub",
-            "9120": "Ops-console (out of Sessions v1 scope)",
         },
         "evidencePort": EVIDENCE_PORT,
         "gatewayHealthPath": "/health",
@@ -871,8 +870,14 @@ def create_session(body: CreateBody) -> dict[str, Any]:
     kanban_id = task.get("id")
     # Do not stuff the kanban id into runId. Steer/stop need a real gateway /v1/runs id.
     run_id = task.get("session_id") or ""
-    herdr = herdr_status()
-    herdr_id = herdr.get("herdrId") or f"herdr-stub-{kanban_id}"
+    # No se presta la sesión Herdr compartida («default») como si fuera de esta tarjeta:
+    # el tab propio lo abre Meta/bus/herdr_watch.py cuando la tarjeta corre (sale en /list).
+    herdr = {
+        "ok": True,
+        "partial": False,
+        "herdrId": "",
+        "note": "tab Herdr propio al correr (workspace Sesiones, lo abre herdr_watch)",
+    }
     return {
         "ok": True,
         "session": {
@@ -884,9 +889,9 @@ def create_session(body: CreateBody) -> dict[str, Any]:
             "model": task.get("model_override") or "",
             "kanbanId": kanban_id,
             "runId": run_id,
-            "herdrId": herdr_id,
+            "herdrId": "",
             "herdrAgent": "",
-            "herdrPartial": bool(herdr.get("partial")),
+            "herdrPartial": False,
             "herdrNote": herdr.get("note"),
             "badge": "linked",
             "evidenceUrl": body.evidenceUrl,
@@ -902,37 +907,9 @@ def create_session(body: CreateBody) -> dict[str, Any]:
 
 @router.post("/jev-gate")
 def jev_gate(body: JevGateBody) -> dict[str, Any]:
-    """Thin non-blocking gate: yes/no readiness for Sessions hop packet."""
-    key = _load_api_key()
-    if not key:
-        return {"ok": False, "error": "no API_SERVER_KEY", "verdict": "skip"}
-    prompt = (
-        "Jev gate ONLY (yes/no). Sessions hop packet ready to dispatch?\n"
-        f"title: {body.title[:200]}\ngoal: {body.goal[:400]}\n"
-        "Reply exactly:\nverdict: yes|no\none_line: ...\n"
-    )
-    payload = json.dumps(
-        {
-            "model": "default",
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.1,
-            "max_tokens": 80,
-        }
-    ).encode()
-    req = urllib.request.Request(
-        "http://127.0.0.1:8642/p/jev/v1/chat/completions",
-        data=payload,
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=45) as resp:
-            data = json.loads(resp.read().decode())
-        text = (data.get("choices") or [{}])[0].get("message", {}).get("content") or ""
-    except Exception as e:
-        return {"ok": False, "error": str(e), "verdict": "skip"}
-    verdict = "yes" if "verdict: yes" in text.lower() else ("no" if "verdict: no" in text.lower() else "unclear")
-    return {"ok": True, "verdict": verdict, "raw": text[:400]}
+    """Retirado 2026-09-24: llamaba al perfil `jev` (era laguna por chat; renombrado). Jev de verdad
+    juzga la entrega en el portón de review (Meta/bus/jev_review.py), no el pedido."""
+    return {"ok": False, "verdict": "skip", "reason": "Jev juzga la entrega en el portón de review"}
 
 
 @router.post("/capabilities")
