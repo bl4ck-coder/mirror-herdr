@@ -24,6 +24,12 @@ async function restPorts() {
     return { ok: false, error: String(e && e.message ? e.message : e) }
   }
 }
+async function restList() {
+  if (!rest) return null
+  try { return await rest('/list') } catch (e) {
+    return { ok: false, error: String(e && e.message ? e.message : e) }
+  }
+}
 async function restClaim(kanbanId) {
   if (!rest) throw new Error('sessions-herdr backend off — claim disabled')
   return rest('/claim', { method: 'POST', body: { kanbanId: kanbanId, confirm: true } })
@@ -542,6 +548,50 @@ function EmptyState() {
   })
 }
 
+// Sesiones autónomas (2026-09-24): lo que lanza un LLM (lanzar-sesiones) aparece solo.
+// Cada una tiene su tab en el workspace Herdr «Sesiones» (Meta/bus/herdr_watch.py).
+const STATUS_MARK = { running: '▶', ready: '·', todo: '…', review: '⏸', blocked: '✗', done: '✓' }
+
+function LaunchedList() {
+  const [data, setData] = useState(null)
+  useEffect(function () {
+    let dead = false
+    function load() { restList().then(function (d) { if (!dead) setData(d) }) }
+    load()
+    const t = setInterval(load, POLL_MS)
+    return function () { dead = true; clearInterval(t) }
+  }, [])
+  const rows = (data && data.sessions) || []
+  const empty = !data ? 'cargando…' : (data.ok === false ? 'backend: ' + (data.error || 'off') : 'Nada corriendo ni en cola.')
+  return jsxs('div', {
+    className: 'sessions-form rounded-lg border p-3',
+    children: [
+      jsx('div', { className: 'text-foreground', children: 'Lanzadas por un LLM' }),
+      jsx('div', {
+        className: 'mb-2 text-[0.65rem] text-(--ui-text-quaternary)',
+        children: 'Las crea un LLM con lanzar-sesiones y corren solas; cada una tiene su tab en Herdr (workspace Sesiones).'
+      }),
+      rows.length ? null : jsx('div', { className: 'text-xs text-(--ui-text-tertiary)', children: empty })
+    ].concat(rows.map(function (s) {
+      return jsxs('div', {
+        className: 'mb-1 rounded border border-(--ui-stroke-secondary) px-2 py-1 text-xs',
+        children: [
+          jsx('div', { className: 'text-foreground', children: (STATUS_MARK[s.status] || '·') + ' ' + s.title }),
+          jsx('div', {
+            className: 'text-[0.65rem] text-(--ui-text-quaternary)',
+            children: s.kanbanId + ' · ' + (s.profile || '?') + ' · ' + (s.model || '?') +
+              ' · lanzó ' + (s.createdBy || '?') + (s.herdrTab ? ' · Herdr ' + s.herdrTab : '')
+          }),
+          s.tail ? jsx('pre', {
+            className: 'mt-1 max-h-24 overflow-hidden whitespace-pre-wrap text-[0.6rem] text-(--ui-text-tertiary)',
+            children: s.tail
+          }) : null
+        ]
+      }, s.kanbanId)
+    }))
+  })
+}
+
 function SessionsPage(props) {
   const storage = props.storage
   const os = props.os
@@ -727,6 +777,7 @@ function SessionsPage(props) {
       ports && ports.reconcile
         ? jsx('div', { className: 'text-[0.65rem] text-(--ui-text-quaternary)', children: ports.reconcile })
         : null,
+      jsx(LaunchedList, {}),
       jsxs('div', {
         className: 'sessions-form rounded-lg border p-3',
         children: [

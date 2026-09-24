@@ -1239,6 +1239,53 @@ def hop_diff() -> dict[str, Any]:
     return _hop_diff()
 
 
+SESIONES_STATE = Path(os.environ.get("LOCALAPPDATA", "")) / "hermes" / "herdr-sesiones" / "state.json"
+
+
+@router.get("/list")
+def list_launched() -> dict[str, Any]:
+    """Sesiones autónomas (2026-09-24): las tarjetas que lanzó un LLM aparecen solas, con su tab
+    en el workspace Herdr «Sesiones» (lo abre Meta/bus/herdr_watch.py). Solo lectura."""
+    import sys
+    bus = str(VAULT / "Meta" / "bus")
+    if bus not in sys.path:
+        sys.path.insert(0, bus)
+    import sesiones_pool as pool  # mismo pool que lanzar.py y herdr_watch.py
+
+    try:
+        tabs = json.loads(SESIONES_STATE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        tabs = {}
+    with pool.db() as con:
+        rows = con.execute(
+            "SELECT id, title, assignee, status, created_by, created_at, completed_at, model_override "
+            "FROM tasks WHERE status IN ('running','ready','todo','review','blocked') "
+            "OR (status = 'done' AND completed_at >= ?) "
+            "ORDER BY CASE status WHEN 'running' THEN 0 WHEN 'ready' THEN 1 WHEN 'todo' THEN 2 "
+            "WHEN 'review' THEN 3 WHEN 'blocked' THEN 4 ELSE 5 END, created_at DESC LIMIT 40",
+            (time.time() - 86400,)).fetchall()
+    exe = _herdr_bin()
+    out = []
+    for r in rows:
+        tab = tabs.get(r["id"]) or {}
+        tail = ""
+        if r["status"] == "running" and tab.get("pane") and exe:
+            try:
+                tail = subprocess.run([str(exe), "pane", "read", tab["pane"], "--lines", "6"],
+                                      capture_output=True, text=True, encoding="utf-8",
+                                      errors="replace", timeout=10).stdout
+            except Exception:
+                tail = ""
+        model = pool.model_of(r["assignee"] or "", r["model_override"])
+        out.append({
+            "kanbanId": r["id"], "title": r["title"], "status": r["status"],
+            "profile": r["assignee"], "model": model, "family": pool.family(model),
+            "createdBy": r["created_by"], "createdAt": r["created_at"],
+            "herdrTab": tab.get("tab", ""), "tail": _redact(tail[-600:]),
+        })
+    return {"ok": True, "workspace": "Sesiones", "sessions": out}
+
+
 @router.get("/health")
 def health() -> dict[str, Any]:
     return {"ok": True, "plugin": "sessions-herdr", "hop": "H", "actions": [
