@@ -1,7 +1,7 @@
 {
     "label":  "Sessions (Herdr)",
     "api":  "plugin_api.py",
-    "description":  "Sessions shell Hop G — A3 action pack. Not a second board.",
+    "description":  "Sessions shell Hop H — A4 extras (ports 8766, claim, kanban_done toast, copy handoff). Not a second board.",
     "name":  "sessions-herdr",
-    "version":  "0.3.0"
+    "version":  "0.4.0"
 }
