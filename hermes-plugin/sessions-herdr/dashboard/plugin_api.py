@@ -34,7 +34,8 @@ PORTS = (8642, 8766)
 EVIDENCE_PORT = 8766
 # Gateway source of truth is GET /health. Bare / may 404 while the gateway is up.
 PROBE_PATH = {8642: "/health", 8766: "/"}
-DASHBOARD_ORIGIN = "http://127.0.0.1:9119"
+# Probe 2026-09-24: 127.0.0.1:9120 no escucha; Tailscale :9120 es tailscaled (404). Sin ruta verificada.
+DEEP_LINK_MOTIVO = "dashboard retirado 2026-09-24; abrir en el Desktop"
 VAULT = Path(r"C:\Users\nachi\ObsidianVaults\mirror-brain")
 FORK = VAULT / "01-Projects" / "Hermes" / "mirror-herdr"
 RECEIPTS = VAULT / "Meta" / "bus" / "receipts"
@@ -923,7 +924,14 @@ def act_route(body: ActBody) -> dict[str, Any]:
 
 
 def _deep_link(kanban_id: str) -> str:
-    return f"{DASHBOARD_ORIGIN}/api/plugins/kanban/tasks/{kanban_id}"
+    # Sin ruta verificada en el Desktop. Vacío a propósito: no inventar URL.
+    return ""
+
+
+def _deep_motivo(kanban_id: str) -> str:
+    if kanban_id and KANBAN_ID_RE.fullmatch(kanban_id):
+        return DEEP_LINK_MOTIVO
+    return ""
 
 
 def _public_task(task: dict[str, Any]) -> dict[str, Any]:
@@ -955,6 +963,7 @@ def _session_from_task(task: dict[str, Any]) -> dict[str, Any]:
         "receiptPath": "",
         "goal": "",
         "deepLink": _deep_link(kid) if kid else "",
+        "motivo": _deep_motivo(kid),
     }
 
 
@@ -962,13 +971,14 @@ def _claim(body: ClaimBody) -> dict[str, Any]:
     """Worker-lock claim. Refuses unless the card is ready — does not steal a running lock."""
     kid = (body.kanbanId or "").strip()
     deep = _deep_link(kid) if KANBAN_ID_RE.fullmatch(kid) else ""
+    motivo = _deep_motivo(kid)
     if not KANBAN_ID_RE.fullmatch(kid):
         return {
             "ok": False,
             "disabled": True,
             "claimed": False,
             "reason": "kanbanId must look like t_<hex>",
-            "deep_link": deep,
+            "deep_link": deep, "motivo": motivo,
         }
     show = _kanban_show(kid)
     if not show.get("ok"):
@@ -977,7 +987,7 @@ def _claim(body: ClaimBody) -> dict[str, Any]:
             "disabled": True,
             "claimed": False,
             "reason": show.get("reason") or "kanban show failed",
-            "deep_link": deep,
+            "deep_link": deep, "motivo": motivo,
         }
     task = show["task"]
     status = str(task.get("status") or "")
@@ -988,7 +998,7 @@ def _claim(body: ClaimBody) -> dict[str, Any]:
             "claimed": False,
             "reason": "confirm required — hermes kanban claim locks ready→running; dispatcher will not spawn until the lock expires",
             "status": status,
-            "deep_link": deep,
+            "deep_link": deep, "motivo": motivo,
             "task": _public_task(task),
         }
     if status != "ready":
@@ -998,7 +1008,7 @@ def _claim(body: ClaimBody) -> dict[str, Any]:
             "disabled": True,
             "reason": f"claim refused: status={status} (need ready). Lock not taken.",
             "status": status,
-            "deep_link": deep,
+            "deep_link": deep, "motivo": motivo,
             "task": _public_task(task),
         }
     try:
@@ -1010,14 +1020,14 @@ def _claim(body: ClaimBody) -> dict[str, Any]:
             env=_hermes_env(),
         )
     except Exception as e:
-        return {"ok": False, "claimed": False, "reason": _redact(str(e)), "deep_link": deep, "status": status}
+        return {"ok": False, "claimed": False, "reason": _redact(str(e)), "deep_link": deep, "motivo": motivo, "status": status}
     text = _redact(((proc.stdout or "") + "\n" + (proc.stderr or "")).strip()[:400])
     if proc.returncode != 0:
         return {
             "ok": False,
             "claimed": False,
             "reason": text or f"claim rc={proc.returncode}",
-            "deep_link": deep,
+            "deep_link": deep, "motivo": motivo,
             "status": status,
         }
     show2 = _kanban_show(kid)
@@ -1026,7 +1036,7 @@ def _claim(body: ClaimBody) -> dict[str, Any]:
         "ok": True,
         "claimed": True,
         "reason": text or "claimed",
-        "deep_link": deep,
+        "deep_link": deep, "motivo": motivo,
         "status": str(task2.get("status") or "running"),
         "session": _session_from_task(task2),
         "task": _public_task(task2),
@@ -1055,16 +1065,16 @@ def _duplex_hooks() -> dict[str, str]:
 def _duplex(since: Optional[int]) -> dict[str, Any]:
     """Read completed events. Does not POST the webhook — the shell hook owns notify."""
     hooks = _duplex_hooks()
-    template = f"{DASHBOARD_ORIGIN}/api/plugins/kanban/tasks/{{task_id}}"
+    template = ""
     db = _kanban_db_path()
     if not db.exists():
-        return {"ok": False, "reason": "kanban.db missing", "hooks": hooks, "events": [], "deep_link_template": template}
+        return {"ok": False, "reason": "kanban.db missing", "hooks": hooks, "events": [], "deep_link_template": template, "motivo": DEEP_LINK_MOTIVO}
     uri = db.resolve().as_uri() + "?mode=ro"
     try:
         con = sqlite3.connect(uri, uri=True, timeout=2)
         con.row_factory = sqlite3.Row
     except Exception as e:
-        return {"ok": False, "reason": type(e).__name__, "hooks": hooks, "events": [], "deep_link_template": template}
+        return {"ok": False, "reason": type(e).__name__, "hooks": hooks, "events": [], "deep_link_template": template, "motivo": DEEP_LINK_MOTIVO}
     try:
         latest = int(con.execute("SELECT COALESCE(MAX(id), 0) FROM task_events").fetchone()[0])
         if since is None:
@@ -1075,6 +1085,7 @@ def _duplex(since: Optional[int]) -> dict[str, Any]:
                 "events": [],
                 "hooks": hooks,
                 "deep_link_template": template,
+                "motivo": DEEP_LINK_MOTIVO,
                 "note": "no backfill — toast fires on later completed events only. This poll does not POST the webhook.",
             }
         rows = con.execute(
@@ -1110,6 +1121,7 @@ def _duplex(since: Optional[int]) -> dict[str, Any]:
             "title": r["title"] or "",
             "note": summary,
             "deep_link": _deep_link(tid) if tid else "",
+            "motivo": _deep_motivo(tid),
             "navigate": "/kanban",
         })
     return {
@@ -1119,6 +1131,7 @@ def _duplex(since: Optional[int]) -> dict[str, Any]:
         "events": events,
         "hooks": hooks,
         "deep_link_template": template,
+        "motivo": DEEP_LINK_MOTIVO,
         "note": "poll does not POST the webhook — duplex-kanban-done.py owns notify",
     }
 
@@ -1143,6 +1156,7 @@ def _handoff_text(body: HandoffBody) -> dict[str, Any]:
     title = (body.title or "").strip() or kid or "session"
     sha = _fork_sha()
     deep = _deep_link(kid) if KANBAN_ID_RE.fullmatch(kid) else ""
+    motivo = _deep_motivo(kid)
     day = time.strftime("%Y-%m-%d")
     text = (
         "---\n"
@@ -1169,7 +1183,7 @@ def _handoff_text(body: HandoffBody) -> dict[str, Any]:
         "**on_reject:** fix A4 only.\n\n"
         "**do-not:** No transcript dump. No keys. No ops-console rebuild. No SOUL. No Nous.\n"
     )
-    return {"ok": True, "text": text, "sha": sha, "deep_link": deep, "kanbanId": kid}
+    return {"ok": True, "text": text, "sha": sha, "deep_link": deep, "motivo": motivo, "kanbanId": kid}
 
 
 def _hop_diff() -> dict[str, Any]:
