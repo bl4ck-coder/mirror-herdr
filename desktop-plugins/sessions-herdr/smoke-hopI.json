@@ -1,0 +1,43 @@
+{
+  "hop": "I",
+  "kind": "visual-dom-notes",
+  "ok": true,
+  "failed": [],
+  "checks": {
+    "twins_identical": true,
+    "cta": true,
+    "empty_class": true,
+    "glass_root": true,
+    "gold_hi": true,
+    "gold_deep": true,
+    "glass_blur": true,
+    "not_night_bg": true,
+    "not_night_gold": true,
+    "hop_label": true,
+    "create_above_copy": true,
+    "ui_claim": true,
+    "ui_copy": true,
+    "ui_8766": true,
+    "ui_toast": true,
+    "ui_health": true,
+    "ui_no_8788": true,
+    "create_label": true,
+    "not_second_board": true,
+    "api_import": true,
+    "api_health_hop_h": true
+  },
+  "sha256": "1f354d76a61c3d14ef3e11b0d8192cdf3bf8543c6b4f62759c946c3ccaecf814",
+  "dom": {
+    "root": "div.sessions-aizurg-glass",
+    "style": "style#sessions-aizurg-glass-style",
+    "form": ".sessions-form",
+    "ports": ".sessions-port",
+    "create": "button.sessions-create text Create + link",
+    "empty": ".sessions-empty > svg.sessions-glass-illu + .sessions-cta",
+    "cta": "Abr\u00ed un agente en Sessions",
+    "rows": ".sessions-row / .sessions-row-focused",
+    "toasts": ".sessions-toasts",
+    "tokens": "default AIZURG liquid-glass (#e8c35a / #d4a017 / blur 22px), not night #040405/#d4b056, not flat Desktop stroke on those panels"
+  },
+  "note": "No GUI screenshot. Desktop restart required before the live Sessions tab shows Hop I."
+}
