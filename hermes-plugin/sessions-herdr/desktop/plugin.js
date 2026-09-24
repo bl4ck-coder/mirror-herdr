@@ -1,5 +1,5 @@
 /**
- * sessions-herdr — Hop C Sessions shell (Herdr-inside-Desktop).
+ * sessions-herdr — Hop G A3 action pack (Herdr-inside-Desktop).
  * Disk: $HERMES_HOME/desktop-plugins/sessions-herdr/plugin.js
  * Backend: $HERMES_HOME/plugins/sessions-herdr/dashboard/plugin_api.py
  * Canonical: mirror-herdr/desktop-plugins/sessions-herdr/
@@ -30,6 +30,35 @@ async function restJevGate(packet) {
     return await rest('/jev-gate', { method: 'POST', body: { title: packet.title || '', goal: packet.goal || '' } })
   } catch (e) {
     return { ok: false, verdict: 'skip', error: String(e && e.message ? e.message : e) }
+  }
+}
+async function restCapabilities(session) {
+  if (!rest) return { ok: false, error: 'backend off' }
+  return rest('/capabilities', { method: 'POST', body: sessionRef(session) })
+}
+async function restAct(action, session, extra) {
+  if (!rest) throw new Error('sessions-herdr backend off — actions disabled')
+  return rest('/act', {
+    method: 'POST',
+    body: Object.assign({ action: action, session: sessionRef(session) }, extra || {})
+  })
+}
+
+function sessionRef(s) {
+  s = s || {}
+  return {
+    id: s.id || '',
+    title: s.title || '',
+    kanbanId: s.kanbanId || '',
+    runId: s.runId || '',
+    herdrId: s.herdrId || '',
+    herdrPartial: Boolean(s.herdrPartial),
+    receiptPath: s.receiptPath || '',
+    evidenceUrl: s.evidenceUrl || '',
+    profile: s.profile || '',
+    model: s.model || '',
+    herdrAgent: s.herdrAgent || '',
+    goal: s.goal || ''
   }
 }
 
@@ -99,8 +128,9 @@ function createLinkedSession(packet, gatewaySnap) {
     profile: packet.assignee,
     model: '',
     kanbanId: uid('k'),
-    runId: uid('run'),
-    herdrId: uid('herdr-stub'),
+    runId: '',
+    herdrId: '',
+    herdrAgent: '',
     receiptPath: '',
     evidenceUrl: packet.evidenceUrl || '',
     goal: packet.goal || '',
@@ -143,8 +173,189 @@ async function probeGatewayStatus() {
   }
 }
 
+function confirmAction(action, session) {
+  const title = (session && session.title) || 'session'
+  const kanban = (session && session.kanbanId) || '(sin kanban)'
+  const herdr = (session && session.herdrId) || '(sin herdrId)'
+  if (action === 'stop') {
+    return 'Stop «' + title + '»?\n\nSi hay un run de gateway en curso, se para ese run. Si no, Herdr session stop solo cuando el herdrId es propio.\nNo se para la sesión shared default (' + herdr + ').'
+  }
+  if (action === 'detach') {
+    return 'Detach «' + title + '»?\n\nHerdr v0.9.0 no tiene comando detach. Si confirmás, la acción queda rechazada con motivo visible — no es un no-op silencioso.'
+  }
+  if (action === 'eliminar') {
+    return 'Eliminar «' + title + '»?\n\nArchiva la card kanban ' + kanban + ' si existe.\nNo borra la sesión Herdr shared default (' + herdr + ').\nLa fila se saca solo si un lado linkeado se limpió de verdad.'
+  }
+  if (action === 'mesh') {
+    return 'Encolar un stub mesh a Sandhi para «' + title + '»?\n\nUn solo POST. No se repite en el poll.'
+  }
+  if (action === 'steer') {
+    return 'Steer al run de gateway de «' + title + '»?'
+  }
+  if (action === 'prompt') {
+    return 'Enviar prompt al agente Herdr propio de «' + title + '»?'
+  }
+  return 'Confirmar ' + action + '?'
+}
+
+function ActionPack(props) {
+  const session = props.session
+  const os = props.os
+  const focused = props.focused
+  const onFocus = props.onFocus
+  const onRemove = props.onRemove
+  const onPatch = props.onPatch
+  const [cap, setCap] = useState(null)
+  const [msg, setMsg] = useState('')
+  const [steerText, setSteerText] = useState('')
+  const [promptText, setPromptText] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(function () {
+    let dead = false
+    restCapabilities(session).then(function (c) {
+      if (!dead) setCap(c)
+    }).catch(function (e) {
+      if (!dead) setCap({ ok: false, error: String(e && e.message ? e.message : e) })
+    })
+    return function () { dead = true }
+  }, [session.kanbanId, session.runId, session.herdrId, session.herdrAgent, session.receiptPath, session.evidenceUrl])
+
+  const actions = (cap && cap.actions) || {}
+  const info = (cap && cap.info) || {}
+
+  function reasonFor(name) {
+    const row = actions[name]
+    if (!row) return rest ? '' : 'backend off — acción deshabilitada'
+    if (row.enabled) return ''
+    return row.reason || 'disabled'
+  }
+
+  async function run(action, extra) {
+    if (busy) return
+    if (action === 'stop' || action === 'detach' || action === 'eliminar' || action === 'mesh' || action === 'steer' || action === 'prompt') {
+      if (!window.confirm(confirmAction(action, session))) {
+        setMsg(action + ': cancelado')
+        return
+      }
+    }
+    setBusy(true)
+    setMsg(action + '…')
+    try {
+      const res = await restAct(action, session, extra)
+      const reason = (res && res.reason) || (res && res.error) || (res && res.ok ? 'ok' : 'sin motivo')
+      setMsg(action + ': ' + reason)
+      if (action === 'focus' && res && res.info && onPatch) {
+        onPatch({ profile: res.info.profile, model: res.info.model })
+      }
+      if (action === 'focus' && res && res.focus && res.focus.gatewaySessionId && host.openSession) {
+        host.openSession(res.focus.gatewaySessionId, { profile: (res.info && res.info.profile) || session.profile })
+      }
+      if (action === 'receipt' && res && res.path && os && os.revealPath) {
+        const opened = await os.revealPath(res.path)
+        setMsg('receipt: ' + reason + (opened ? '' : ' (revealPath no disponible — path arriba)'))
+      }
+      if (action === 'evidence' && res && res.url && os && os.openExternal) {
+        const opened = await os.openExternal(res.url)
+        setMsg('evidence: ' + (res.url) + (opened ? '' : ' (openExternal no disponible)'))
+      }
+      if (action === 'eliminar' && res && res.cleared && res.cleared.ui && onRemove) {
+        onRemove(session.id)
+      }
+      if (action !== 'receipt' && action !== 'evidence') {
+        restCapabilities(session).then(setCap).catch(function () {})
+      }
+    } catch (e) {
+      setMsg(action + ': ' + String(e && e.message ? e.message : e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const btn = 'rounded border border-(--ui-stroke-secondary) px-1.5 py-0.5 text-[0.7rem] text-foreground'
+  const off = ' opacity-60'
+  function Btn(p) {
+    const why = reasonFor(p.name)
+    return jsx('button', {
+      type: 'button',
+      className: btn + (why && p.name !== 'detach' && p.name !== 'stop' && p.name !== 'eliminar' ? off : ''),
+      title: why || (actions[p.name] && actions[p.name].reason) || p.name,
+      disabled: busy,
+      onClick: p.onClick,
+      children: p.label
+    })
+  }
+
+  return jsxs('div', {
+    className: 'mt-2 space-y-1',
+    children: [
+      jsx('div', {
+        className: 'text-[0.7rem] text-(--ui-text-tertiary)',
+        children: 'LLM ' + (info.llm || info.model || '…') + ' · profile ' + (info.profile || session.profile || '…')
+          + (info.modelSource ? ' (' + info.modelSource + ')' : '')
+          + (focused ? ' · focused' : '')
+      }),
+      jsxs('div', {
+        className: 'flex flex-wrap gap-1',
+        children: [
+          jsx(Btn, { name: 'focus', label: 'Focus', onClick: function () { onFocus(session.id); run('focus') } }),
+          jsx(Btn, { name: 'stop', label: 'Stop', onClick: function () { run('stop', { confirm: true }) } }),
+          jsx(Btn, { name: 'detach', label: 'Detach', onClick: function () { run('detach', { confirm: true }) } }),
+          jsx(Btn, { name: 'eliminar', label: 'Eliminar', onClick: function () { run('eliminar', { confirm: true }) } }),
+          jsx(Btn, { name: 'receipt', label: 'Receipt', onClick: function () { run('receipt') } }),
+          jsx(Btn, { name: 'evidence', label: 'Evidence', onClick: function () { run('evidence') } }),
+          jsx(Btn, { name: 'mesh', label: 'Mesh', onClick: function () { run('mesh', { confirm: true }) } })
+        ]
+      }),
+      jsx('div', {
+        className: 'text-[0.65rem] text-(--ui-text-quaternary)',
+        children: [
+          reasonFor('stop') ? ('Stop — ' + reasonFor('stop')) : null,
+          reasonFor('detach') ? ('Detach — ' + reasonFor('detach')) : null,
+          reasonFor('steer') ? ('Steer — ' + reasonFor('steer')) : null,
+          reasonFor('prompt') ? ('Prompt — ' + reasonFor('prompt')) : null
+        ].filter(Boolean).join(' · ') || (cap ? 'action pack listo' : 'cargando acciones…')
+      }),
+      jsxs('div', {
+        className: 'flex gap-1',
+        children: [
+          jsx('input', {
+            className: 'min-w-0 flex-1 rounded border border-(--ui-stroke-secondary) bg-transparent px-1.5 py-0.5 text-[0.7rem]',
+            placeholder: actions.steer && actions.steer.enabled ? 'steer al run en curso' : 'steer deshabilitado',
+            value: steerText,
+            onChange: function (e) { setSteerText(e.target.value) }
+          }),
+          jsx(Btn, {
+            name: 'steer',
+            label: 'Steer',
+            onClick: function () { run('steer', { confirm: true, text: steerText }) }
+          })
+        ]
+      }),
+      jsxs('div', {
+        className: 'flex gap-1',
+        children: [
+          jsx('input', {
+            className: 'min-w-0 flex-1 rounded border border-(--ui-stroke-secondary) bg-transparent px-1.5 py-0.5 text-[0.7rem]',
+            placeholder: actions.prompt && actions.prompt.enabled ? 'prompt al agente propio' : 'prompt deshabilitado',
+            value: promptText,
+            onChange: function (e) { setPromptText(e.target.value) }
+          }),
+          jsx(Btn, {
+            name: 'prompt',
+            label: 'Prompt',
+            onClick: function () { run('prompt', { confirm: true, text: promptText }) }
+          })
+        ]
+      }),
+      msg ? jsx('div', { className: 'text-[0.7rem] text-(--ui-text-tertiary)', children: msg }) : null
+    ]
+  })
+}
+
 function SessionsPage(props) {
   const storage = props.storage
+  const os = props.os
   const gatewayAtom = useValue(host.state.gateway)
   const [sessions, setSessions] = useState(function () { return storage.get(STORAGE_KEY, []) })
   const [form, setForm] = useState(emptyForm)
@@ -152,6 +363,7 @@ function SessionsPage(props) {
   const [note, setNote] = useState('')
   const [mode, setMode] = useState('lite')
   const [ports, setPorts] = useState(null)
+  const [focusedId, setFocusedId] = useState('')
 
   function persist(next) {
     setSessions(next)
@@ -192,9 +404,10 @@ function SessionsPage(props) {
       const sess = res.session
       persist([sess].concat(sessions))
       setForm(emptyForm())
+      setFocusedId(sess.id)
       setNote(
         'REAL kanban=' + sess.kanbanId +
-        ' run=' + sess.runId +
+        ' run=' + (sess.runId || '(none)') +
         ' herdr=' + sess.herdrId +
         (sess.herdrPartial ? ' (herdr PARTIAL)' : '')
       )
@@ -209,8 +422,8 @@ function SessionsPage(props) {
       const sess = createLinkedSession(packet, gw)
       persist([sess].concat(sessions))
       setForm(emptyForm())
-      setNote('FALLBACK stub ids (backend off): ' + String(e && e.message ? e.message : e))
-      host.notify({ kind: 'warning', message: 'sessions-herdr backend off — stub ids' })
+      setNote('FALLBACK sin ids reales (backend off): ' + String(e && e.message ? e.message : e))
+      host.notify({ kind: 'warning', message: 'sessions-herdr backend off — sin herdrId inventado' })
     }
   }
 
@@ -231,7 +444,7 @@ function SessionsPage(props) {
               jsx('div', { className: 'text-base text-foreground', children: 'Sessions' }),
               jsx('div', {
                 className: 'text-(--ui-text-tertiary)',
-                children: 'Herdr-inside-Desktop · Hop C · not a second board'
+                children: 'Herdr-inside-Desktop · Hop G action pack · not a second board'
               })
             ]
           }),
@@ -252,6 +465,9 @@ function SessionsPage(props) {
           }, row.port)
         })
       }),
+      ports && ports.reconcile
+        ? jsx('div', { className: 'text-[0.65rem] text-(--ui-text-quaternary)', children: ports.reconcile })
+        : null,
       jsxs('div', {
         className: 'rounded-lg border border-(--ui-stroke-secondary) p-3',
         children: [
@@ -275,7 +491,7 @@ function SessionsPage(props) {
           mode === 'markdown'
             ? jsx('textarea', {
                 className: taCls + ' h-28',
-                placeholder: '# Title\nassignee: builder\\ngoal: ...\\n## acceptance\\n- ...\\n## do-not\\n- ...\\nevidence: https://...',
+                placeholder: '# Title\nassignee: builder\ngoal: ...\n## acceptance\n- ...\n## do-not\n- ...\nevidence: https://...',
                 value: form.markdown,
                 onChange: function (e) { setForm(Object.assign({}, form, { markdown: e.target.value })) }
               })
@@ -304,7 +520,7 @@ function SessionsPage(props) {
           sessions.length === 0
             ? jsx('div', {
                 className: 'mt-3 text-center text-(--ui-text-tertiary)',
-                children: 'Empty · Create a Session above (real kanbanId via hermes kanban create)'
+                children: 'Empty · Create a Session above — the action pack appears on the row'
               })
             : null
         ]
@@ -313,7 +529,7 @@ function SessionsPage(props) {
         className: 'min-h-0 flex-1 space-y-2 overflow-auto',
         children: sessions.map(function (s) {
           return jsxs('div', {
-            className: 'rounded border border-(--ui-stroke-secondary) p-2',
+            className: 'rounded border p-2 ' + (focusedId === s.id ? 'border-foreground' : 'border-(--ui-stroke-secondary)'),
             children: [
               jsxs('div', {
                 className: 'flex justify-between gap-2',
@@ -324,9 +540,31 @@ function SessionsPage(props) {
               }),
               jsx('div', {
                 className: 'mt-1 text-[0.7rem] text-(--ui-text-quaternary)',
-                children: 'id=' + s.id + ' · kanban=' + s.kanbanId + ' · run=' + s.runId + ' · herdr=' + s.herdrId + (s.herdrPartial ? ' (PARTIAL)' : '')
+                children: 'id=' + s.id + ' · kanban=' + s.kanbanId + ' · run=' + (s.runId || '(none)') + ' · herdr=' + (s.herdrId || '(none)') + (s.herdrPartial ? ' (PARTIAL)' : '')
               }),
-              s.goal ? jsx('div', { className: 'mt-1 text-xs text-(--ui-text-tertiary)', children: s.goal }) : null
+              s.goal ? jsx('div', { className: 'mt-1 text-xs text-(--ui-text-tertiary)', children: s.goal }) : null,
+              jsx(ActionPack, {
+                session: s,
+                os: os,
+                focused: focusedId === s.id,
+                onFocus: setFocusedId,
+                onRemove: function (id) {
+                  setSessions(function (prev) {
+                    const next = prev.filter(function (row) { return row.id !== id })
+                    storage.set(STORAGE_KEY, next)
+                    return next
+                  })
+                },
+                onPatch: function (patch) {
+                  setSessions(function (prev) {
+                    const next = prev.map(function (row) {
+                      return row.id === s.id ? Object.assign({}, row, patch) : row
+                    })
+                    storage.set(STORAGE_KEY, next)
+                    return next
+                  })
+                }
+              })
             ]
           }, s.id)
         })
@@ -338,7 +576,7 @@ function SessionsPage(props) {
 export default {
   id: ID,
   name: 'Sessions (Herdr)',
-  description: 'Sessions shell Hop C — real hermes kanban create, herdrId, ports strip, thin Jev gate. Not a second board.',
+  description: 'Sessions shell Hop G — A3 action pack (stop/detach/eliminar/steer/receipt/evidence/focus/mesh). Not a second board.',
   defaultEnabled: true,
   register(ctx) {
     bindRest(ctx.rest)
@@ -347,7 +585,7 @@ export default {
         id: 'page',
         area: 'routes',
         data: { path: '/sessions' },
-        render: function () { return jsx(SessionsPage, { storage: ctx.storage }) }
+        render: function () { return jsx(SessionsPage, { storage: ctx.storage, os: ctx.os }) }
       },
       {
         id: 'nav',

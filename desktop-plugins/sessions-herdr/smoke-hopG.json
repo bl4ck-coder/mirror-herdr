@@ -1,0 +1,55 @@
+{
+  "hop": "G",
+  "ok": true,
+  "failed": [],
+  "checks": {
+    "stop_disabled": true,
+    "stop_refuses_default": true,
+    "stop_not_wired_herdr": true,
+    "detach_visible_reason": true,
+    "eliminar_needs_confirm": true,
+    "eliminar_fake_not_cleared": true,
+    "eliminar_fake_keeps_default": true,
+    "steer_disabled": true,
+    "prompt_disabled": true,
+    "focus_ui_only": true,
+    "evidence_8766": true,
+    "evidence_not_8788": true,
+    "receipt_pointer": true,
+    "mesh_not_posted": true,
+    "info_profile_builder": true,
+    "info_model_unavailable": true,
+    "cap_detach_disabled": true,
+    "cap_steer_disabled": true,
+    "cap_mesh_enabled": true,
+    "herdr_default_still_running": true,
+    "ui_has_action_pack": true
+  },
+  "stop_reason": "gateway has no /v1/runs/t_3932a256; herdrId is the shared default session \u2014 refusing stop/delete",
+  "detach_reason": "Herdr v0.9.0 CLI has session list/attach/stop/delete only \u2014 no detach. Not a silent no-op.",
+  "eliminar_fake_reason": "cannot archive t_00000000; herdrId is the shared default session \u2014 refusing stop/delete; row kept \u2014 no linked side was cleared",
+  "steer_reason": "steer disabled: gateway has no /v1/runs/t_3932a256",
+  "prompt_reason": "prompt disabled: no owned herdrAgent in the live list (refusing the shared agent)",
+  "evidence": {
+    "url": "http://127.0.0.1:8766/",
+    "listening": true,
+    "reconcile": "8788 is fleet-bridge, not the evidence hub. Evidence link stays :8766.",
+    "fleetBridgeListening": true
+  },
+  "receipt": {
+    "kind": "pointer",
+    "path": "C:\\Users\\nachi\\ObsidianVaults\\mirror-brain\\Meta\\bus\\receipts"
+  },
+  "info": {
+    "profile": "builder",
+    "model": "unavailable",
+    "modelSource": "unavailable",
+    "kanbanStatus": "running"
+  },
+  "notes": [
+    "GUI click not exercised. Desktop must reload plugin.js to show the pack.",
+    "Mesh live POST skipped (confirm=false) so Sandhi is not woken.",
+    "Eliminar smoke used t_00000000 only; archive refused; default Herdr session not deleted.",
+    "runId=kanban id is not a gateway /v1/runs id \u2014 steer/stop stay honestly disabled."
+  ]
+}
