@@ -1,0 +1,73 @@
+{
+  "hop": "H",
+  "ok": true,
+  "failed": [],
+  "checks": {
+    "ports_order": true,
+    "label_8766": true,
+    "no_8788_label": true,
+    "no_8788_reconcile": true,
+    "gateway_path_health": true,
+    "evidence_8766_up": true,
+    "9120_not_required": true,
+    "evidence_url_8766": true,
+    "evidence_no_8788": true,
+    "show_running_before": true,
+    "claim_needs_confirm": true,
+    "claim_refuses_running": true,
+    "claim_deep_link": true,
+    "lock_not_stolen": true,
+    "claim_missing_visible": true,
+    "claim_bad_id": true,
+    "duplex_anchor": true,
+    "duplex_hook_notify": true,
+    "duplex_hook_py": true,
+    "duplex_kind": true,
+    "duplex_no_post": true,
+    "duplex_source_no_subprocess": true,
+    "duplex_event_shape": true,
+    "handoff_type": true,
+    "handoff_no_secrets": true,
+    "handoff_has_id": true,
+    "ui_claim": true,
+    "ui_copy": true,
+    "ui_8766": true,
+    "ui_toast": true,
+    "ui_no_8788": true,
+    "ui_health_path": true,
+    "health_hop": true
+  },
+  "ports": {
+    "8642": {
+      "up": true,
+      "http": 200,
+      "path": "/health"
+    },
+    "9119": {
+      "up": true,
+      "http": 200,
+      "path": "/"
+    },
+    "8766": {
+      "up": true,
+      "http": 200,
+      "path": "/"
+    },
+    "9120": {
+      "up": false,
+      "http": "URLError",
+      "path": "/"
+    }
+  },
+  "claim_running_reason": "claim refused: status=running (need ready). Lock not taken.",
+  "duplex_hooks": {
+    "notify": "%LOCALAPPDATA%\\hermes\\scripts\\hermes-duplex-notify.ps1",
+    "hook": "%LOCALAPPDATA%\\hermes\\agent-hooks\\duplex-kanban-done.py",
+    "spec": "01-Projects/Hermes/bridge-duplex/SPEC-bridge-duplex-v1.md",
+    "plan": "01-Projects/Hermes/bridge-duplex/PLAN-bridge-duplex-v1.md",
+    "kind": "kanban_done",
+    "inbox": "Meta/bus/inbox.jsonl \u2192 grok-bot:825fb166",
+    "webhook_routine": "ops-visual-hermes-bot"
+  },
+  "note": "Did not call hermes kanban claim on a ready card. Did not POST the duplex webhook. Desktop restart required for live UI."
+}

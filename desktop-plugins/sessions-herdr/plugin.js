@@ -1,5 +1,5 @@
 /**
- * sessions-herdr — Hop G A3 action pack (Herdr-inside-Desktop).
+ * sessions-herdr — Hop H A4 extras (Herdr-inside-Desktop).
  * Disk: $HERMES_HOME/desktop-plugins/sessions-herdr/plugin.js
  * Backend: $HERMES_HOME/plugins/sessions-herdr/dashboard/plugin_api.py
  * Canonical: mirror-herdr/desktop-plugins/sessions-herdr/
@@ -21,6 +21,27 @@ async function restCreate(packet) {
 async function restPorts() {
   if (!rest) return null
   try { return await rest('/ports') } catch (e) {
+    return { ok: false, error: String(e && e.message ? e.message : e) }
+  }
+}
+async function restClaim(kanbanId) {
+  if (!rest) throw new Error('sessions-herdr backend off — claim disabled')
+  return rest('/claim', { method: 'POST', body: { kanbanId: kanbanId, confirm: true } })
+}
+async function restDuplex(since) {
+  if (!rest) return null
+  const path = since == null ? '/duplex' : ('/duplex?since=' + since)
+  try { return await rest(path) } catch (e) {
+    return { ok: false, error: String(e && e.message ? e.message : e) }
+  }
+}
+async function restHandoff(body) {
+  if (!rest) throw new Error('sessions-herdr backend off — handoff copy disabled')
+  return rest('/handoff', { method: 'POST', body: body || {} })
+}
+async function restDiff() {
+  if (!rest) return { ok: false, error: 'backend off' }
+  try { return await rest('/diff') } catch (e) {
     return { ok: false, error: String(e && e.message ? e.message : e) }
   }
 }
@@ -173,6 +194,24 @@ async function probeGatewayStatus() {
   }
 }
 
+let duplexSince = null
+
+function notifyKanbanDone(ev, os) {
+  const id = (ev && ev.task_id) || ''
+  const note = (ev && ev.note) || ''
+  host.notify({
+    kind: 'success',
+    title: 'kanban_done',
+    message: id + (note ? ' — ' + note : ''),
+    action: {
+      label: 'open card',
+      onClick: function () {
+        if (os && os.openExternal && ev.deep_link) os.openExternal(ev.deep_link)
+      }
+    }
+  })
+}
+
 function confirmAction(action, session) {
   const title = (session && session.title) || 'session'
   const kanban = (session && session.kanbanId) || '(sin kanban)'
@@ -229,6 +268,28 @@ function ActionPack(props) {
     if (!row) return rest ? '' : 'backend off — acción deshabilitada'
     if (row.enabled) return ''
     return row.reason || 'disabled'
+  }
+
+  async function copyRowHandoff() {
+    if (busy) return
+    setBusy(true)
+    setMsg('handoff…')
+    try {
+      const res = await restHandoff({
+        kanbanId: session.kanbanId || '',
+        title: session.title || '',
+        goal: session.goal || ''
+      })
+      const text = (res && res.text) || ''
+      if (props.onHandoff) props.onHandoff(text)
+      let copied = false
+      if (text && os && os.writeClipboard) copied = Boolean(await os.writeClipboard(text))
+      setMsg(copied ? 'handoff copiado al clipboard' : 'handoff visible en la página (clipboard no disponible)')
+    } catch (e) {
+      setMsg('handoff: ' + String(e && e.message ? e.message : e))
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function run(action, extra) {
@@ -304,7 +365,14 @@ function ActionPack(props) {
           jsx(Btn, { name: 'eliminar', label: 'Eliminar', onClick: function () { run('eliminar', { confirm: true }) } }),
           jsx(Btn, { name: 'receipt', label: 'Receipt', onClick: function () { run('receipt') } }),
           jsx(Btn, { name: 'evidence', label: 'Evidence', onClick: function () { run('evidence') } }),
-          jsx(Btn, { name: 'mesh', label: 'Mesh', onClick: function () { run('mesh', { confirm: true }) } })
+          jsx(Btn, { name: 'mesh', label: 'Mesh', onClick: function () { run('mesh', { confirm: true }) } }),
+          jsx('button', {
+            type: 'button',
+            className: btn,
+            disabled: busy,
+            onClick: function () { copyRowHandoff() },
+            children: 'Copy handoff'
+          })
         ]
       }),
       jsx('div', {
@@ -364,6 +432,11 @@ function SessionsPage(props) {
   const [mode, setMode] = useState('lite')
   const [ports, setPorts] = useState(null)
   const [focusedId, setFocusedId] = useState('')
+  const [claimId, setClaimId] = useState('')
+  const [claimNote, setClaimNote] = useState('')
+  const [handoffText, setHandoffText] = useState('')
+  const [diffText, setDiffText] = useState('')
+  const [toasts, setToasts] = useState([])
 
   function persist(next) {
     setSessions(next)
@@ -389,12 +462,67 @@ function SessionsPage(props) {
   useEffect(function () {
     refreshGatewayStatuses()
     restPorts().then(setPorts)
+    pollDuplex()
     const t = setInterval(function () {
       refreshGatewayStatuses()
       restPorts().then(setPorts)
+      pollDuplex()
     }, POLL_MS)
     return function () { clearInterval(t) }
   }, [])
+
+  async function pollDuplex() {
+    const d = await restDuplex(duplexSince)
+    if (!d || d.ok === false) return
+    if (typeof d.latest_event_id === 'number') duplexSince = d.latest_event_id
+    const evs = d.events || []
+    if (!evs.length) return
+    setToasts(function (prev) { return evs.concat(prev).slice(0, 8) })
+    evs.forEach(function (ev) { notifyKanbanDone(ev, os) })
+  }
+
+  async function onClaim() {
+    const id = claimId.trim()
+    if (!id) {
+      setClaimNote('claim: falta kanbanId')
+      return
+    }
+    if (!window.confirm('Claim «' + id + '»?\n\nhermes kanban claim pasa ready→running. El dispatcher no spawnea hasta que expire el lock.\nSi no está ready, se rechaza con motivo — no se roba un lock ajeno.')) {
+      setClaimNote('claim: cancelado')
+      return
+    }
+    setClaimNote('claim…')
+    try {
+      const res = await restClaim(id)
+      const reason = (res && res.reason) || (res && res.ok ? 'ok' : 'sin motivo')
+      setClaimNote('claim: ' + reason + (res && res.deep_link ? ' · ' + res.deep_link : ''))
+      if (res && res.claimed && res.session) {
+        persist([res.session].concat(sessions))
+        setFocusedId(res.session.id)
+      }
+    } catch (e) {
+      setClaimNote('claim: ' + String(e && e.message ? e.message : e))
+    }
+  }
+
+  async function onCopyPageHandoff() {
+    try {
+      const res = await restHandoff({ kanbanId: claimId.trim(), title: form.title, goal: form.goal })
+      const text = (res && res.text) || ''
+      setHandoffText(text)
+      let copied = false
+      if (text && os && os.writeClipboard) copied = Boolean(await os.writeClipboard(text))
+      setClaimNote(copied ? 'handoff copiado al clipboard' : 'handoff visible abajo (clipboard no disponible)')
+    } catch (e) {
+      setClaimNote('handoff: ' + String(e && e.message ? e.message : e))
+    }
+  }
+
+  async function onShowDiff() {
+    const res = await restDiff()
+    const text = ((res && res.status) || '') + '\n' + ((res && res.log) || '') + '\n' + ((res && res.note) || (res && res.error) || '')
+    setDiffText(text.trim())
+  }
 
   async function onCreate() {
     const packet = formToPacket(form)
@@ -431,7 +559,15 @@ function SessionsPage(props) {
   const taCls = 'mb-1 w-full rounded border border-(--ui-stroke-secondary) bg-transparent p-2 text-xs'
   const portRows = (ports && ports.ports)
     ? ports.ports
-    : [8642, 9119, 8766, 9120].map(function (p) { return { port: p, listening: null } })
+    : [8642, 9119, 8766, 9120].map(function (p) {
+        return { port: p, listening: null, path: p === 8642 ? '/health' : '/' }
+      })
+  const fallbackLabels = {
+    8642: 'Hermes gateway',
+    9119: 'Hermes dashboard',
+    8766: 'Evidence hub',
+    9120: 'Ops-console (out of Sessions v1 scope)'
+  }
 
   return jsxs('div', {
     className: 'flex h-full min-h-0 flex-col gap-3 p-3 text-sm text-(--ui-text-secondary)',
@@ -444,7 +580,7 @@ function SessionsPage(props) {
               jsx('div', { className: 'text-base text-foreground', children: 'Sessions' }),
               jsx('div', {
                 className: 'text-(--ui-text-tertiary)',
-                children: 'Herdr-inside-Desktop · Hop G action pack · not a second board'
+                children: 'Herdr-inside-Desktop · Hop H A4 extras · not a second board'
               })
             ]
           }),
@@ -457,11 +593,12 @@ function SessionsPage(props) {
       jsx('div', {
         className: 'flex flex-wrap gap-2 text-[0.7rem] text-(--ui-text-quaternary)',
         children: portRows.map(function (row) {
-          const lab = (ports && ports.labels && ports.labels[String(row.port)]) || ''
-          const st = row.listening === true ? 'up' : (row.listening === false ? 'down' : '?')
+          const lab = (ports && ports.labels && ports.labels[String(row.port)]) || fallbackLabels[row.port] || ''
+          const st = row.up === true ? 'up' : (row.up === false ? 'down' : (row.listening === true ? 'up' : (row.listening === false ? 'down' : '?')))
+          const pathBit = row.path && row.path !== '/' ? (' ' + row.path) : ''
           return jsx('span', {
             className: 'rounded border border-(--ui-stroke-secondary) px-1.5 py-0.5',
-            children: ':' + row.port + ' ' + st + (lab ? ' ' + lab : '')
+            children: ':' + row.port + ' ' + st + pathBit + (lab ? ' ' + lab : '')
           }, row.port)
         })
       }),
@@ -517,6 +654,48 @@ function SessionsPage(props) {
               note ? jsx('span', { className: 'text-(--ui-text-quaternary) text-xs', children: note }) : null
             ]
           }),
+          jsxs('div', {
+            className: 'mt-2 flex flex-wrap items-center gap-2',
+            children: [
+              jsx('input', {
+                className: 'min-w-0 flex-1 rounded border border-(--ui-stroke-secondary) bg-transparent px-2 py-1 text-xs',
+                placeholder: 'kanban id (t_…)',
+                value: claimId,
+                onChange: function (e) { setClaimId(e.target.value) }
+              }),
+              jsx('button', {
+                type: 'button',
+                className: 'rounded border border-(--ui-stroke-secondary) px-2 py-1 text-xs text-foreground',
+                onClick: onClaim,
+                children: 'Claim'
+              }),
+              jsx('button', {
+                type: 'button',
+                className: 'rounded border border-(--ui-stroke-secondary) px-2 py-1 text-xs text-foreground',
+                onClick: onCopyPageHandoff,
+                children: 'Copy handoff'
+              }),
+              jsx('button', {
+                type: 'button',
+                className: 'rounded border border-(--ui-stroke-secondary) px-2 py-1 text-xs text-foreground',
+                onClick: onShowDiff,
+                children: 'Hop diff'
+              })
+            ]
+          }),
+          claimNote ? jsx('div', { className: 'mt-1 text-[0.7rem] text-(--ui-text-tertiary)', children: claimNote }) : null,
+          jsx('div', {
+            className: 'mt-1 text-[0.65rem] text-(--ui-text-quaternary)',
+            children: 'Reiniciar Hermes Desktop para que el plugin live tome Hop H. Create no espera a :9120.'
+          }),
+          handoffText ? jsx('pre', {
+            className: 'mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-[0.65rem] text-(--ui-text-tertiary)',
+            children: handoffText
+          }) : null,
+          diffText ? jsx('pre', {
+            className: 'mt-2 max-h-32 overflow-auto whitespace-pre-wrap text-[0.65rem] text-(--ui-text-quaternary)',
+            children: diffText
+          }) : null,
           sessions.length === 0
             ? jsx('div', {
                 className: 'mt-3 text-center text-(--ui-text-tertiary)',
@@ -525,6 +704,25 @@ function SessionsPage(props) {
             : null
         ]
       }),
+      toasts.length
+        ? jsx('div', {
+            className: 'space-y-1 rounded border border-(--ui-stroke-secondary) p-2 text-[0.7rem]',
+            children: toasts.map(function (ev) {
+              return jsxs('div', {
+                className: 'flex flex-wrap items-center gap-2',
+                children: [
+                  jsx('span', { children: 'kanban_done ' + (ev.task_id || '') + (ev.note ? ' — ' + ev.note : '') }),
+                  ev.deep_link ? jsx('button', {
+                    type: 'button',
+                    className: 'rounded border border-(--ui-stroke-secondary) px-1.5 py-0.5',
+                    onClick: function () { if (os && os.openExternal) os.openExternal(ev.deep_link) },
+                    children: 'open card'
+                  }) : null
+                ]
+              }, String(ev.event_id || ev.task_id))
+            })
+          })
+        : null,
       jsx('div', {
         className: 'min-h-0 flex-1 space-y-2 overflow-auto',
         children: sessions.map(function (s) {
@@ -563,7 +761,8 @@ function SessionsPage(props) {
                     storage.set(STORAGE_KEY, next)
                     return next
                   })
-                }
+                },
+                onHandoff: setHandoffText
               })
             ]
           }, s.id)
@@ -576,7 +775,7 @@ function SessionsPage(props) {
 export default {
   id: ID,
   name: 'Sessions (Herdr)',
-  description: 'Sessions shell Hop G — A3 action pack (stop/detach/eliminar/steer/receipt/evidence/focus/mesh). Not a second board.',
+  description: 'Sessions shell Hop H — A4 extras (ports 8766, claim, kanban_done toast, copy handoff). Not a second board.',
   defaultEnabled: true,
   register(ctx) {
     bindRest(ctx.rest)
